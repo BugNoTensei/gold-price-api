@@ -1,0 +1,13 @@
+require("dotenv").config();
+
+module.exports = {
+  HEADERS: {
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    Accept: "application/json, text/html, application/xhtml+xml",
+    "Accept-Language": "en-US,en;q=0.9",
+  },
+  GOOGLE_SHEET_URL:
+    process.env.GOOGLE_SHEET_URL,
+  POLL_INTERVAL: 30000,
+};
