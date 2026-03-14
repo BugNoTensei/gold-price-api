@@ -31,6 +31,9 @@ async function fetchFromAPI() {
     });
   } catch (err) {
     console.error("[API Fetch Error]:", err.message);
+    if (err.config && err.config.headers) {
+      console.log("Headers", err.config.headers);
+    }
     return null;
   }
 }
