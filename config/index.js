@@ -7,7 +7,4 @@ module.exports = {
     Accept: "application/json, text/html, application/xhtml+xml",
     "Accept-Language": "en-US,en;q=0.9",
   },
-  GOOGLE_SHEET_URL:
-    process.env.GOOGLE_SHEET_URL,
-  POLL_INTERVAL: 30000,
 };
