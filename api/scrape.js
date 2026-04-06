@@ -1,5 +1,6 @@
 const { fetchFromAPI, fetchFromClassicWeb } = require("../services/scraper");
 const supabase = require("../services/supabase");
+const axios = require("axios");
 
 async function getLastUpdateTimeDB(source) {
   const { data, error } = await supabase
@@ -33,11 +34,39 @@ async function saveBulkToDB(source, dataArray) {
     .upsert(formattedData, { onConflict: "unique_key" });
 
   if (error) throw error;
+
+  console.log(
+    `[INFO] [DB] Successfully upserted ${dataArray.length} record(s) for ${source}`,
+  );
+}
+
+async function updateG99PawnPay(latestData) {
+  try {
+    const payload = {
+      barSale: parseFloat(latestData.barSell),
+      barBuy: parseFloat(latestData.barBuy),
+    };
+
+    const targetUrl =
+      process.env.G99_API_URL || "https://g99pawnpay.golden99.co.th/gold-price";
+    await axios.post(targetUrl, payload);
+
+    console.log(
+      `[INFO] [API_EXTERNAL] Payload posted to G99PawnPay successfully: ${JSON.stringify(payload)}`,
+    );
+  } catch (error) {
+    console.error(
+      `[ERROR] [API_EXTERNAL] Failed to post to G99PawnPay: ${error.message}`,
+    );
+  }
 }
 
 async function processAPI() {
   const apiDataList = await fetchFromAPI();
-  if (!apiDataList || apiDataList.length === 0) return;
+  if (!apiDataList || apiDataList.length === 0) {
+    console.log(`[WARN] [SCRAPER] No data retrieved from API source`);
+    return;
+  }
 
   const lastTimeStr = await getLastUpdateTimeDB("API");
   let lastDate = 0;
@@ -56,28 +85,39 @@ async function processAPI() {
 
   if (newItems.length > 0) {
     await saveBulkToDB("API", newItems);
+    const latestItem = newItems[newItems.length - 1];
+    await updateG99PawnPay(latestItem);
+  } else {
+    console.log(`[INFO] [SYNC] API source is already up-to-date`);
   }
 }
 
 async function processClassicWeb() {
   const classicData = await fetchFromClassicWeb();
-  if (!classicData) return;
+  if (!classicData) {
+    console.log(`[WARN] [SCRAPER] No data retrieved from ClassicWeb source`);
+    return;
+  }
 
   const dbLastTime = await getLastUpdateTimeDB("ClassicWeb");
 
   if (String(classicData.updateTime).trim() !== String(dbLastTime).trim()) {
     await saveBulkToDB("ClassicWeb", [classicData]);
+  } else {
+    console.log(`[INFO] [SYNC] ClassicWeb source is already up-to-date`);
   }
 }
 
 module.exports = async function handler(req, res) {
   try {
+    console.log(`[INFO] [SYSTEM] Initiating synchronization sequence...`);
     await Promise.all([processAPI(), processClassicWeb()]);
+    console.log(`[INFO] [SYSTEM] Synchronization sequence completed`);
 
     return res.status(200).json({ success: true });
   } catch (error) {
     console.error(
-      `[CRITICAL ERROR] Failed to sync gold prices: ${error.message}`,
+      `[FATAL] [SYSTEM] Synchronization sequence terminated: ${error.message}`,
     );
     return res.status(500).json({ success: false, error: error.message });
   }
