@@ -1,11 +1,11 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
+const https = require("https");
 const { HEADERS } = require("../config");
 const goldConfig = require("../config/goldConfig");
-const https = require("https");
+
 const httpsAgent = new https.Agent({
   rejectUnauthorized: false,
-  httpsAgent: httpsAgent,
   keepAlive: true,
 });
 
