@@ -3,11 +3,18 @@ const cheerio = require("cheerio");
 const { HEADERS } = require("../config");
 const goldConfig = require("../config/goldConfig");
 
+const httpsAgent = new https.Agent({
+  rejectUnauthorized: false,
+  httpsAgent: httpsAgent,
+  keepAlive: true,
+});
+
 async function fetchFromAPI() {
   try {
     const res = await axios.get(goldConfig.API_URL, {
       headers: HEADERS,
-      timeout: 1000,
+      httpsAgent: httpsAgent,
+      timeout: 5000,
     });
 
     if (!Array.isArray(res.data)) return null;
@@ -42,6 +49,7 @@ async function fetchFromClassicWeb() {
   try {
     const res = await axios.get(goldConfig.CLASSIC_WEB_URL, {
       headers: HEADERS,
+      httpsAgent: httpsAgent,
       timeout: 5000,
     });
     const $ = cheerio.load(res.data);

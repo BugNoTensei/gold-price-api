@@ -45,6 +45,7 @@ async function updateG99PawnPay(latestData) {
     const payload = {
       barSale: parseFloat(latestData.barSell),
       barBuy: parseFloat(latestData.barBuy),
+      priceAt: latestData.updateTime,
     };
 
     const targetUrl =
