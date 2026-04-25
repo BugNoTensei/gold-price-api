@@ -66,7 +66,7 @@ async function processAPI() {
   const apiDataList = await fetchFromAPI();
   if (!apiDataList || apiDataList.length === 0) {
     console.log(`[WARN] [SCRAPER] No data retrieved from API source`);
-    return;
+    return { updated: false, data: [] };
   }
 
   const lastTimeStr = await getLastUpdateTimeDB("API");
@@ -88,8 +88,10 @@ async function processAPI() {
     await saveBulkToDB("API", newItems);
     const latestItem = newItems[newItems.length - 1];
     await updateG99PawnPay(latestItem);
+    return { updated: true, data: newItems };
   } else {
     console.log(`[INFO] [SYNC] API source is already up-to-date`);
+    return { updated: false, data: apiDataList };
   }
 }
 
@@ -97,36 +99,43 @@ async function processClassicWeb() {
   const classicData = await fetchFromClassicWeb();
   if (!classicData) {
     console.log(`[WARN] [SCRAPER] No data retrieved from ClassicWeb source`);
-    return;
+    return { updated: false, data: null };
   }
 
   const dbLastTime = await getLastUpdateTimeDB("ClassicWeb");
 
   if (String(classicData.updateTime).trim() !== String(dbLastTime).trim()) {
     await saveBulkToDB("ClassicWeb", [classicData]);
+    return { updated: true, data: classicData };
   } else {
     console.log(`[INFO] [SYNC] ClassicWeb source is already up-to-date`);
+    return { updated: false, data: classicData };
   }
 }
 
 module.exports = async function handler(req, res) {
   try {
     console.log(`[INFO] [SYSTEM] Initiating synchronization sequence...`);
-    await Promise.all([processAPI(), processClassicWeb()]);
+    const [apiResult, classicResult] = await Promise.all([
+      processAPI(),
+      processClassicWeb(),
+    ]);
     console.log(`[INFO] [SYSTEM] Synchronization sequence completed`);
 
     return res.status(200).json({
       status: "success",
-      response: goldData,
+      response: {
+        apiSource: apiResult,
+        classicWebSource: classicResult,
+      },
     });
-  } catch (error) {
+  } catch (err) {
     console.error(
-      `[FATAL] [SYSTEM] Synchronization sequence terminated: ${error.message}`,
+      `[FATAL] [SYSTEM] Synchronization sequence terminated: ${err.message}`,
     );
     return res.status(500).json({
       status: "error",
-      message: error instanceof Error ? error.message : "Internal Server Error",
+      error: err instanceof Error ? err.message : "Internal Server Error",
     });
   }
 };
-module.exports = handler;
