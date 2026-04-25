@@ -115,11 +115,18 @@ module.exports = async function handler(req, res) {
     await Promise.all([processAPI(), processClassicWeb()]);
     console.log(`[INFO] [SYSTEM] Synchronization sequence completed`);
 
-    return res.status(200).json({ success: true });
+    return res.status(200).json({
+      status: "success",
+      response: goldData,
+    });
   } catch (error) {
     console.error(
       `[FATAL] [SYSTEM] Synchronization sequence terminated: ${error.message}`,
     );
-    return res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({
+      status: "error",
+      message: error instanceof Error ? error.message : "Internal Server Error",
+    });
   }
 };
+module.exports = handler;
