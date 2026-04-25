@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/api/scrape"
+    },
+    {
+      "source": "/index.js",
+      "destination": "/api/scrape"
+    }
+  ]
+}
