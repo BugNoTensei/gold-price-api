@@ -1,12 +1,9 @@
 {
-  "rewrites": [
+  "redirects": [
     {
       "source": "/",
-      "destination": "/api/scrape"
-    },
-    {
-      "source": "/index.js",
-      "destination": "/api/scrape"
+      "destination": "/api/scrape",
+      "permanent": false
     }
   ]
 }
