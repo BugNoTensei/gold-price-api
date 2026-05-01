@@ -36,11 +36,13 @@ cp .env.example .env
 ## Running
 
 ### Development
+
 ```bash
 npm run dev
 ```
 
 ### Production
+
 ```bash
 npm start
 ```
@@ -90,6 +92,7 @@ CMD ["npm", "start"]
 Default: Every 15 minutes (`*/15 * * * *`)
 
 Change via `CRON_SCHEDULE` env variable:
+
 - `0 * * * *` - Every hour
 - `0 9-17 * * *` - Hourly 9 AM to 5 PM
 - `*/5 * * * *` - Every 5 minutes
