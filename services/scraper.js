@@ -1,7 +1,10 @@
 const axios = require("axios");
 const cheerio = require("cheerio");
 const https = require("https");
-const { HEADERS } = require("../config");
+const http = require("http");
+const HttpProxyAgent = require("http-proxy-agent");
+const HttpsProxyAgent = require("https-proxy-agent");
+const { HEADERS, PROXY_URL } = require("../config");
 const goldConfig = require("../config/goldConfig");
 
 const httpsAgent = new https.Agent({
@@ -9,12 +12,65 @@ const httpsAgent = new https.Agent({
   keepAlive: true,
 });
 
+// Setup proxy agents if proxy URL is provided
+let proxyHttpAgent = null;
+let proxyHttpsAgent = null;
+if (PROXY_URL) {
+  proxyHttpAgent = new HttpProxyAgent(PROXY_URL);
+  proxyHttpsAgent = new HttpsProxyAgent(PROXY_URL);
+  console.log(`[INFO] Using proxy: ${PROXY_URL}`);
+}
+
+// Retry logic wrapper
+async function fetchWithRetry(url, options = {}, retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      console.log(`[FETCH] Attempt ${attempt}/${retries} for ${url.substring(0, 50)}...`);
+      const response = await axios.get(url, {
+        ...options,
+        timeout: 10000,
+      });
+      console.log(`[SUCCESS] Fetched successfully on attempt ${attempt}`);
+      return response;
+    } catch (err) {
+      const statusCode = err.response?.status || "unknown";
+      const isClientError = err.response && err.response.status >= 400 && err.response.status < 500;
+      const isLastAttempt = attempt === retries;
+
+      console.error(
+        `[ATTEMPT ${attempt}] Status: ${statusCode}, Message: ${err.message}`,
+      );
+
+      if (isClientError && statusCode === 403) {
+        // 403 might be temporary, retry with longer wait
+        if (!isLastAttempt) {
+          const waitTime = 2000 * attempt; // 2s, 4s, 6s
+          console.log(`[RETRY] Waiting ${waitTime}ms before retry...`);
+          await new Promise((r) => setTimeout(r, waitTime));
+          continue;
+        }
+      } else if (!isClientError && !isLastAttempt) {
+        // Network errors, retry
+        const waitTime = 1000 * attempt;
+        console.log(`[RETRY] Network error, waiting ${waitTime}ms...`);
+        await new Promise((r) => setTimeout(r, waitTime));
+        continue;
+      }
+
+      if (isLastAttempt) {
+        console.error(`[FAILED] All ${retries} attempts exhausted for ${url}`);
+        throw err;
+      }
+    }
+  }
+}
+
 async function fetchFromAPI() {
   try {
-    const res = await axios.get(goldConfig.API_URL, {
+    const res = await fetchWithRetry(goldConfig.API_URL, {
       headers: HEADERS,
-      httpsAgent: httpsAgent,
-      timeout: 5000,
+      httpsAgent: proxyHttpsAgent || httpsAgent,
+      httpAgent: proxyHttpAgent,
     });
 
     if (!Array.isArray(res.data)) return null;
@@ -47,10 +103,10 @@ async function fetchFromAPI() {
 
 async function fetchFromClassicWeb() {
   try {
-    const res = await axios.get(goldConfig.CLASSIC_WEB_URL, {
+    const res = await fetchWithRetry(goldConfig.CLASSIC_WEB_URL, {
       headers: HEADERS,
-      httpsAgent: httpsAgent,
-      timeout: 5000,
+      httpsAgent: proxyHttpsAgent || httpsAgent,
+      httpAgent: proxyHttpAgent,
     });
     const $ = cheerio.load(res.data);
 
