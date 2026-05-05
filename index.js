@@ -1,27 +1,20 @@
-const handler = require("./api/scrape");
+require("dotenv").config();
+const express = require("express");
+const scrapeRoutes = require("./api/scrape");
+const scheduler = require("./services/scheduler");
 
-const req = {};
-const res = {
-  status: (code) => ({
-    json: (data) => {
-      if (code === 200) {
-        console.log(
-          `[INFO] [PROCESS] Synchronization completed successfully | Status: ${code} | Data: ${JSON.stringify(data)}`,
-        );
-      } else {
-        console.error(
-          `[ERROR] [PROCESS] Synchronization failed | Status: ${code} | Reason: ${data.error}`,
-        );
-      }
-    },
-  }),
-};
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-async function executeSync() {
-  console.log(
-    `[INFO] [SYSTEM] Initializing extraction and database sync pipeline...`,
-  );
-  await handler(req, res);
-}
+app.use(express.json());
 
-executeSync();
+app.use("/api", scrapeRoutes);
+
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+app.listen(PORT, () => {
+  console.log(`[SERVER] Running on port ${PORT}`);
+  scheduler.start();
+});

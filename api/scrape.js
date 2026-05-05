@@ -1,6 +1,7 @@
+const express = require("express");
+const router = express.Router();
 const { fetchFromAPI, fetchFromClassicWeb } = require("../services/scraper");
 const supabase = require("../services/supabase");
-const axios = require("axios");
 
 async function getLastUpdateTimeDB(source) {
   const { data, error } = await supabase
@@ -36,36 +37,14 @@ async function saveBulkToDB(source, dataArray) {
   if (error) throw error;
 
   console.log(
-    `[INFO] [DB] Successfully upserted ${dataArray.length} record(s) for ${source}`,
+    `[DB] Successfully upserted ${dataArray.length} record(s) for ${source}`,
   );
-}
-
-async function updateG99PawnPay(latestData) {
-  try {
-    const payload = {
-      barSale: parseFloat(latestData.barSell),
-      barBuy: parseFloat(latestData.barBuy),
-      priceAt: latestData.updateTime,
-    };
-
-    const targetUrl =
-      process.env.G99_API_URL || "https://g99pawnpay.golden99.co.th/gold-price";
-    await axios.post(targetUrl, payload);
-
-    console.log(
-      `[INFO] [API_EXTERNAL] Payload posted to G99PawnPay successfully: ${JSON.stringify(payload)}`,
-    );
-  } catch (error) {
-    console.error(
-      `[ERROR] [API_EXTERNAL] Failed to post to G99PawnPay: ${error.message}`,
-    );
-  }
 }
 
 async function processAPI() {
   const apiDataList = await fetchFromAPI();
   if (!apiDataList || apiDataList.length === 0) {
-    console.log(`[WARN] [SCRAPER] No data retrieved from API source`);
+    console.log(`[SCRAPER] No data retrieved from API source`);
     return { updated: false, data: [] };
   }
 
@@ -86,11 +65,9 @@ async function processAPI() {
 
   if (newItems.length > 0) {
     await saveBulkToDB("API", newItems);
-    const latestItem = newItems[newItems.length - 1];
-    await updateG99PawnPay(latestItem);
     return { updated: true, data: newItems };
   } else {
-    console.log(`[INFO] [SYNC] API source is already up-to-date`);
+    console.log(`[SYNC] API source is already up-to-date`);
     return { updated: false, data: apiDataList };
   }
 }
@@ -98,7 +75,7 @@ async function processAPI() {
 async function processClassicWeb() {
   const classicData = await fetchFromClassicWeb();
   if (!classicData) {
-    console.log(`[WARN] [SCRAPER] No data retrieved from ClassicWeb source`);
+    console.log(`[SCRAPER] No data retrieved from ClassicWeb source`);
     return { updated: false, data: null };
   }
 
@@ -108,19 +85,19 @@ async function processClassicWeb() {
     await saveBulkToDB("ClassicWeb", [classicData]);
     return { updated: true, data: classicData };
   } else {
-    console.log(`[INFO] [SYNC] ClassicWeb source is already up-to-date`);
+    console.log(`[SYNC] ClassicWeb source is already up-to-date`);
     return { updated: false, data: classicData };
   }
 }
 
-module.exports = async function handler(req, res) {
+router.get("/scrape", async (req, res) => {
   try {
-    console.log(`[INFO] [SYSTEM] Initiating synchronization sequence...`);
+    console.log(`[SYSTEM] Initiating synchronization sequence...`);
     const [apiResult, classicResult] = await Promise.all([
       processAPI(),
       processClassicWeb(),
     ]);
-    console.log(`[INFO] [SYSTEM] Synchronization sequence completed`);
+    console.log(`[SYSTEM] Synchronization sequence completed`);
 
     return res.status(200).json({
       status: "success",
@@ -131,11 +108,13 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     console.error(
-      `[FATAL] [SYSTEM] Synchronization sequence terminated: ${err.message}`,
+      `[SYSTEM] Synchronization sequence terminated: ${err.message}`,
     );
     return res.status(500).json({
       status: "error",
       error: err instanceof Error ? err.message : "Internal Server Error",
     });
   }
-};
+});
+
+module.exports = router;
