@@ -9,7 +9,6 @@ Standalone Express backend for gold price scraping with automatic scheduler.
 - Optimized headers for web scraping
 - Automatic price sync via node-cron
 - Supabase integration
-- G99PawnPay webhook integration
 
 ## Installation
 
@@ -30,7 +29,6 @@ cp .env.example .env
 - `PORT` - Server port (default: 3000)
 - `SUPABASE_URL` - Supabase project URL
 - `SUPABASE_SERVICE_KEY` - Supabase service key
-- `G99_API_URL` - Webhook endpoint for G99PawnPay
 - `CRON_SCHEDULE` - Cron expression (default: every 15 minutes)
 
 ## Running
